@@ -11,8 +11,9 @@ import org.altbeacon.beacon.MonitorNotifier;
 import org.altbeacon.beacon.RangeNotifier;
 import org.altbeacon.beacon.Region;
 import org.altbeacon.beacon.logging.LogManager;
-import org.altbeacon.beacon.logging.Loggers;
 import org.altbeacon.beacon.powersave.BackgroundPowerSaver;
+import org.altbeacon.beacon.service.ArmaRssiFilter;
+import org.altbeacon.beacon.service.RunningAverageRssiFilter;
 
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothManager;
@@ -184,24 +185,6 @@ public class BeaconSearcher {
 	private BeaconSearcher(Context context) {
 		this.mContext = context.getApplicationContext();
 		
-		// 建议使用org.altbeacon.beacon.logging.LogManager.javaLogManager输出日志，altbeacon就是使用这种机制，便于发布版本时，减少输出日志信息。
-		// 输出所有ERROR(Log.e()), WARN(Log.w()), INFO(Log.i()), DEBUG(Log.d()), VERBOSE(Log.v())
-		// 对应日志级别由高到低
-        //LogManager.setLogger(Loggers.verboseLogger());
-		
-        // 全部不输出，在release版本中设置
-        //LogManager.setLogger(Loggers.empty());
-		
-        // 输出ERROR(Log.e()), WARN(Log.w()),缺省状态，仅输出错误和警告信息，即输出警告级别以上的日志
-        LogManager.setLogger(Loggers.warningLogger());
-        
-        // 试验日志输出
-//        LogManager.e(TAG,"Error");
-//        LogManager.w(TAG,"Warn");
-//        LogManager.i(TAG,"info");
-//        LogManager.d(TAG,"debug");
-//        LogManager.v(TAG,"verbose");
-
 		this.mBeaconManager = BeaconManager.getInstanceForApplication(mContext);
 
 		// 经过测试，天津的Beacon应该是Apple的Beacon，beaconTypeCode=0215
@@ -307,7 +290,7 @@ public class BeaconSearcher {
 			LogManager.d(TAG,
 					"didRangeBeaconsInRegion(),beacons=" + beacons.size());
 			for (Beacon beacon : beacons) {
-				LogManager.d(TAG, beacon.getId2() + "," + beacon.getDistance());
+				LogManager.d(TAG, beacon.getId2()+":"+beacon.getId3() + "," + beacon.getDistance());
 			}
 			Beacon beacon = mNearestBeacon.getNearestBeacon(mGetBeaconType,
 					beacons);
@@ -577,4 +560,32 @@ public class BeaconSearcher {
 				.getSystemService(Context.BLUETOOTH_SERVICE)).getAdapter()
 				.enable();
 	}
+	
+	/**
+	 * 设置Rssi滤波模型 
+	 * Default class for rssi filter/calculation implementation：RunningAverageRssiFilter.class
+	 * others：ArmaRssiFilter.class
+	 */
+    public static void setRssiFilterImplClass(Class c) {
+		BeaconManager.setRssiFilterImplClass(c);
+	}
+    
+    /***
+     * 设置ArmaRssiFilter的系数c,1Hz信号变化频率，推荐值0.1；10hz，推荐值0.25 ~ 0.5
+     * 仅适用于ArmaRssiFilter
+     */
+    public static void setDEFAULT_ARMA_SPEED(double default_arma_speed) {
+    	ArmaRssiFilter.setDEFAULT_ARMA_SPEED(default_arma_speed);
+    }
+    
+    /**
+     * 设置RunningAverageRssiFilter的采样周期，缺省是20秒(20000毫秒)
+     * 即，计算该时间段内的平均RSSI（首位各去掉10%）
+     * 仅适应于RunningAverageRssiFilter
+     * @param newSampleExpirationMilliseconds
+     */
+    public static void setSampleExpirationMilliseconds(long newSampleExpirationMilliseconds) {
+    	RunningAverageRssiFilter.setSampleExpirationMilliseconds(newSampleExpirationMilliseconds);
+    }
+
 }
